@@ -1,0 +1,418 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Portfolio | The Void</title>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
+    
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <style>
+        /* ==========================================================================
+           CORE STYLES & RESET
+           ========================================================================== */
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        
+        body, html {
+            width: 100%; height: 100%;
+            background-color: #000000; overflow: hidden;
+            font-family: 'JetBrains Mono', monospace; color: #ffffff;
+        }
+
+        /* ==========================================================================
+           BACKGROUND & INTRO
+           ========================================================================== */
+        #webgl-background {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            z-index: 1; /* Starts in front during intro */
+            transition: z-index 0s 4s; /* Pushes to back after intro */
+        }
+        
+        /* The initial blackout screen */
+        #intro-overlay {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background-color: #000000; z-index: 100;
+            pointer-events: none; transition: opacity 1.5s ease-in-out;
+        }
+
+        /* ==========================================================================
+           UI SIDEBAR (Left)
+           ========================================================================== */
+        #sidebar {
+            position: fixed; left: 0; top: 0; width: 250px; height: 100vh;
+            background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+            z-index: 10; display: flex; flex-direction: column; justify-content: center;
+            padding-left: 40px; border-right: 1px solid rgba(255, 255, 255, 0.1);
+            
+            /* Hidden initially, fades in after intro */
+            opacity: 0; pointer-events: none; transform: translateX(-20px);
+            transition: all 1.5s ease 3.5s; /* Delay matches intro sequence */
+        }
+        
+        /* Class applied via JS to reveal UI */
+        #sidebar.ui-active {
+            opacity: 1; pointer-events: auto; transform: translateX(0);
+        }
+
+        .nav-item {
+            font-size: 1.2rem; color: #aaaaaa; cursor: pointer;
+            margin-bottom: 25px; text-transform: uppercase; letter-spacing: 3px;
+            transition: color 0.3s ease, transform 0.3s ease;
+            position: relative; width: fit-content;
+        }
+        
+        .nav-item::before {
+            content: ''; position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
+            width: 8px; height: 1px; background: #ffffff; opacity: 0; transition: opacity 0.3s;
+        }
+
+        .nav-item:hover { color: #ffffff; transform: translateX(10px); }
+        .nav-item:hover::before { opacity: 1; }
+
+        /* The Hidden Menu Tab */
+        #nav-games {
+            display: none; /* Physically hidden until 'g' is pressed */
+            color: #00e5ff; /* Special color for the secret tab */
+        }
+        #nav-games.unlocked {
+            display: block; animation: glowPulse 2s infinite;
+        }
+        
+        @keyframes glowPulse {
+            0% { text-shadow: 0 0 5px rgba(0, 229, 255, 0.2); }
+            50% { text-shadow: 0 0 15px rgba(0, 229, 255, 0.8); }
+            100% { text-shadow: 0 0 5px rgba(0, 229, 255, 0.2); }
+        }
+
+        /* ==========================================================================
+           CONTENT MODALS (The "Things" that open)
+           ========================================================================== */
+        .modal {
+            position: fixed; top: 0; left: 250px; /* Offset by sidebar width */
+            width: calc(100vw - 250px); height: 100vh;
+            background: rgba(10, 10, 15, 0.7); backdrop-filter: blur(15px);
+            z-index: 20; padding: 60px;
+            
+            /* Hidden State */
+            opacity: 0; pointer-events: none; transform: scale(0.98);
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+            display: flex; flex-direction: column;
+        }
+        
+        .modal.active {
+            opacity: 1; pointer-events: auto; transform: scale(1);
+        }
+
+        .close-btn {
+            position: absolute; top: 40px; right: 40px;
+            font-size: 1.5rem; color: #ffffff; cursor: pointer;
+            transition: transform 0.3s;
+        }
+        .close-btn:hover { transform: rotate(90deg); }
+
+        .modal-title {
+            font-size: 3rem; margin-bottom: 40px; text-transform: uppercase;
+            letter-spacing: 5px; border-bottom: 2px solid #333; padding-bottom: 10px;
+        }
+
+        /* Layout: Horizontal Scroll for "My Work" */
+        .horizontal-scroll {
+            display: flex; gap: 30px; overflow-x: auto; padding-bottom: 20px;
+            /* Hide scrollbar for a cleaner look */
+            -ms-overflow-style: none; scrollbar-width: none;
+        }
+        .horizontal-scroll::-webkit-scrollbar { display: none; }
+        
+        .work-card {
+            min-width: 400px; height: 500px; background: #111;
+            border: 1px solid #333; border-radius: 4px; padding: 20px;
+            display: flex; flex-direction: column;
+        }
+        
+        .work-img-placeholder {
+            width: 100%; height: 250px; background: #222; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center; color: #555;
+        }
+
+        /* Layout: Grid for "Downloads" and "Games" */
+        .grid-layout {
+            display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+            gap: 30px; overflow-y: auto; padding-bottom: 40px;
+        }
+        
+        .grid-item {
+            background: #111; border: 1px solid #333; border-radius: 4px;
+            padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;
+        }
+        .grid-item:hover { background: #222; border-color: #555; transform: translateY(-5px); }
+        
+        .btn-download {
+            margin-top: 15px; padding: 10px 20px; background: #ffffff; color: #000;
+            border: none; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="intro-overlay"></div>
+
+    <div id="webgl-background"></div>
+
+    <div id="sidebar">
+        <div class="nav-item" onclick="openModal('modal-work')">My Work</div>
+        <div class="nav-item" onclick="openModal('modal-about')">What I Do</div>
+        <div class="nav-item" onclick="openModal('modal-downloads')">Downloads</div>
+        <div class="nav-item" id="nav-games" onclick="openModal('modal-games')">Games</div>
+    </div>
+
+    <div id="modal-work" class="modal">
+        <div class="close-btn" onclick="closeAllModals()">✕</div>
+        <h2 class="modal-title">My Work</h2>
+        <div class="horizontal-scroll">
+            <div class="work-card">
+                <div class="work-img-placeholder">Project Image</div>
+                <h3>Project Alpha</h3>
+                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Description of the project. This area is designed for large images and explanatory text. Scroll right to see more.</p>
+            </div>
+            <div class="work-card">
+                <div class="work-img-placeholder">Project Image</div>
+                <h3>Project Beta</h3>
+                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Horizontal scrolling keeps the vertical height constrained while allowing for a lot of content.</p>
+            </div>
+            <div class="work-card">
+                <div class="work-img-placeholder">Project Image</div>
+                <h3>Project Gamma</h3>
+                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Placeholder for future portfolio pieces.</p>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-about" class="modal">
+        <div class="close-btn" onclick="closeAllModals()">✕</div>
+        <h2 class="modal-title">What I Do</h2>
+        <div style="max-width: 800px; font-size: 1.2rem; line-height: 2; color: #cccccc;">
+            <p style="margin-bottom: 20px;">I am a developer and designer specializing in immersive web experiences.</p>
+            <p>This is where you would place your biography, skills, technologies you use, and perhaps a link to your resume.</p>
+        </div>
+    </div>
+
+    <div id="modal-downloads" class="modal">
+        <div class="close-btn" onclick="closeAllModals()">✕</div>
+        <h2 class="modal-title">Downloads</h2>
+        <div class="grid-layout">
+            <div class="grid-item">
+                <h3>Asset Pack 1</h3>
+                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Textures and UI elements.</p>
+                <button class="btn-download">Download .zip</button>
+            </div>
+            <div class="grid-item">
+                <h3>Template Engine</h3>
+                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Source code repository.</p>
+                <button class="btn-download">View GitHub</button>
+            </div>
+            <div class="grid-item">
+                <h3>Resume.pdf</h3>
+                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Current CV.</p>
+                <button class="btn-download">Download</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="modal-games" class="modal">
+        <div class="close-btn" onclick="closeAllModals()">✕</div>
+        <h2 class="modal-title" style="color: #00e5ff; border-color: rgba(0, 229, 255, 0.3);">Secret Games Hub</h2>
+        <div class="grid-layout">
+            <div class="grid-item" style="border-color: rgba(0, 229, 255, 0.5);">
+                <h3 style="color: #00e5ff;">Game Prototype A</h3>
+                <div style="width: 100%; height: 100px; background: #222; margin: 15px 0;">Thumbnail</div>
+                <button class="btn-download" style="background: #00e5ff; color: #000;">Play Now</button>
+            </div>
+            <div class="grid-item" style="border-color: rgba(0, 229, 255, 0.5);">
+                <h3 style="color: #00e5ff;">Game Prototype B</h3>
+                <div style="width: 100%; height: 100px; background: #222; margin: 15px 0;">Thumbnail</div>
+                <button class="btn-download" style="background: #00e5ff; color: #000;">Play Now</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // ==========================================
+        // UI INTERACTION LOGIC
+        // ==========================================
+        
+        // Secret Key Press Event ('g' for Games)
+        document.addEventListener('keydown', function(event) {
+            if (event.key.toLowerCase() === 'g') {
+                const gamesTab = document.getElementById('nav-games');
+                if (!gamesTab.classList.contains('unlocked')) {
+                    gamesTab.classList.add('unlocked');
+                    console.log("Secret Unlocked: Games Tab Revealed");
+                }
+            }
+        });
+
+        // Modal Management
+        function openModal(modalId) {
+            closeAllModals(); // Close others first
+            document.getElementById(modalId).classList.add('active');
+        }
+
+        function closeAllModals() {
+            const modals = document.querySelectorAll('.modal');
+            modals.forEach(m => m.classList.remove('active'));
+        }
+
+        // Trigger the intro sequence on load
+        window.onload = function() {
+            // 1. Fade out the initial black screen
+            setTimeout(() => {
+                document.getElementById('intro-overlay').style.opacity = '0';
+            }, 500);
+
+            // 2. Trigger the UI reveal after the black hole finishes expanding
+            setTimeout(() => {
+                document.getElementById('sidebar').classList.add('ui-active');
+                // Push the canvas behind the UI
+                document.getElementById('webgl-background').style.zIndex = '-1';
+            }, 3500);
+
+            initBackgroundEngine();
+        };
+
+        // ==========================================
+        // BLACK HOLE / VOID BACKGROUND ENGINE
+        // ==========================================
+        function initBackgroundEngine() {
+            const scene = new THREE.Scene();
+            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
+            
+            // Start camera far away, it will push in rapidly
+            camera.position.z = 2000;
+
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('webgl-background').appendChild(renderer.domElement);
+
+            // --- The Stars ---
+            const starGeo = new THREE.BufferGeometry();
+            const starCount = 5000;
+            const starPos = new Float32Array(starCount * 3);
+            for(let i=0; i<starCount; i++) {
+                starPos[i*3] = (Math.random() - 0.5) * 4000;
+                starPos[i*3+1] = (Math.random() - 0.5) * 4000;
+                starPos[i*3+2] = (Math.random() - 0.5) * 4000;
+            }
+            starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
+            // Stars start invisible
+            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 2, transparent: true, opacity: 0 });
+            const stars = new THREE.Points(starGeo, starMat);
+            scene.add(stars);
+
+            // --- The Black Hole (Accretion Disk) ---
+            const bhGroup = new THREE.Group();
+            scene.add(bhGroup);
+
+            // The Event Horizon (Pure Black Sphere)
+            const ehGeo = new THREE.SphereGeometry(30, 32, 32);
+            const ehMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
+            const eventHorizon = new THREE.Mesh(ehGeo, ehMat);
+            bhGroup.add(eventHorizon);
+
+            // The Accretion Disk (Thousands of fast-moving particles)
+            const diskGeo = new THREE.BufferGeometry();
+            const diskCount = 15000;
+            const diskPos = new Float32Array(diskCount * 3);
+            const diskAngles = new Float32Array(diskCount); // Store angles for physics
+            const diskSpeeds = new Float32Array(diskCount);
+            
+            for(let i=0; i<diskCount; i++) {
+                const radius = 40 + Math.random() * 150;
+                const angle = Math.random() * Math.PI * 2;
+                diskAngles[i] = angle;
+                // Inner particles move faster
+                diskSpeeds[i] = 0.05 + (1 / radius) * 5; 
+                
+                // Add vertical variation (thicker in middle, thinner at edges)
+                const y = (Math.random() - 0.5) * (150 / radius) * 5;
+                
+                diskPos[i*3] = Math.cos(angle) * radius;
+                diskPos[i*3+1] = y;
+                diskPos[i*3+2] = Math.sin(angle) * radius;
+            }
+            diskGeo.setAttribute('position', new THREE.BufferAttribute(diskPos, 3));
+            
+            // Start disk invisible
+            const diskMat = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 1.2, transparent: true, opacity: 0 });
+            const accretionDisk = new THREE.Points(diskGeo, diskMat);
+            // Tilt the disk for a cinematic angle
+            accretionDisk.rotation.x = Math.PI / 2.2;
+            bhGroup.add(accretionDisk);
+
+            // Start Black Hole extremely small
+            bhGroup.scale.set(0.001, 0.001, 0.001);
+
+            // --- Render Loop & Animation Timeline ---
+            const clock = new THREE.Clock();
+            let time = 0;
+
+            function animate() {
+                requestAnimationFrame(animate);
+                
+                const delta = Math.min(clock.getDelta(), 0.1); // Safe capping
+                time += delta;
+
+                // 1. The Expansion Sequence (T+0s to T+3s)
+                if (time < 3) {
+                    // Fast exponential ease out
+                    const t = time / 3;
+                    const expansion = 1 - Math.pow(1 - t, 4);
+                    
+                    bhGroup.scale.set(expansion, expansion, expansion);
+                    diskMat.opacity = expansion * 0.8;
+                    starMat.opacity = expansion * 0.5;
+                    
+                    // Camera pushes in dramatically during expansion
+                    camera.position.z = 2000 - (expansion * 1700);
+                }
+
+                // 2. Continuous Physics
+                stars.rotation.y += delta * 0.01;
+                
+                // Spin the accretion disk manually to control speeds based on radius
+                const positions = accretionDisk.geometry.attributes.position.array;
+                for (let i = 0; i < diskCount; i++) {
+                    diskAngles[i] -= diskSpeeds[i] * delta;
+                    
+                    // Re-calculate X and Z based on new angle, keeping original radius and Y
+                    const vx = positions[i*3];
+                    const vz = positions[i*3+2];
+                    const radius = Math.sqrt(vx*vx + vz*vz);
+                    
+                    positions[i*3] = Math.cos(diskAngles[i]) * radius;
+                    positions[i*3+2] = Math.sin(diskAngles[i]) * radius;
+                }
+                accretionDisk.geometry.attributes.position.needsUpdate = true;
+
+                // Slowly drift the entire Black Hole group for a floating effect
+                bhGroup.position.y = Math.sin(time * 0.5) * 5;
+                bhGroup.rotation.y = Math.sin(time * 0.2) * 0.1;
+
+                // Move camera slightly based on mouse position to create parallax
+                // (Disabled initially during the heavy intro animation to save frames)
+                
+                renderer.render(scene, camera);
+            }
+
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+
+            animate();
+        }
+    </script>
+</body>
+</html>
