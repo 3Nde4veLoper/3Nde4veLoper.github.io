@@ -3,154 +3,128 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Portfolio | The Void</title>
+    <title>My Portfolio | The Singularity</title>
     <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:ital,wght@0,400;0,700;1,400&display=swap" rel="stylesheet">
-    
     <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
 
     <style>
         /* ==========================================================================
-           CORE STYLES & RESET
+           CORE STYLES & UI
            ========================================================================== */
         * { box-sizing: border-box; margin: 0; padding: 0; }
         
         body, html {
-            width: 100%; height: 100%;
-            background-color: #000000; overflow: hidden;
-            font-family: 'JetBrains Mono', monospace; color: #ffffff;
+            width: 100%; height: 100%; background-color: #000000; overflow: hidden;
+            font-family: 'JetBrains Mono', monospace; color: #ffffff; user-select: none;
         }
 
-        /* ==========================================================================
-           BACKGROUND & INTRO
-           ========================================================================== */
         #webgl-background {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            z-index: 1; /* Starts in front during intro */
-            transition: z-index 0s 4s; /* Pushes to back after intro */
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; z-index: -1;
         }
-        
-        /* The initial blackout screen */
+
         #intro-overlay {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background-color: #000000; z-index: 100;
-            pointer-events: none; transition: opacity 1.5s ease-in-out;
+            background-color: #000000; z-index: 100; pointer-events: none;
+            transition: opacity 2s ease-in-out;
         }
 
-        /* ==========================================================================
-           UI SIDEBAR (Left)
-           ========================================================================== */
+        /* --- SIDEBAR --- */
         #sidebar {
             position: fixed; left: 0; top: 0; width: 250px; height: 100vh;
-            background: linear-gradient(90deg, rgba(0,0,0,0.9) 0%, rgba(0,0,0,0) 100%);
+            background: linear-gradient(90deg, rgba(0,5,15,0.9) 0%, rgba(0,0,0,0) 100%);
             z-index: 10; display: flex; flex-direction: column; justify-content: center;
-            padding-left: 40px; border-right: 1px solid rgba(255, 255, 255, 0.1);
-            
-            /* Hidden initially, fades in after intro */
+            padding-left: 40px; border-right: 1px solid rgba(0, 136, 255, 0.2);
             opacity: 0; pointer-events: none; transform: translateX(-20px);
-            transition: all 1.5s ease 3.5s; /* Delay matches intro sequence */
+            transition: all 1.5s ease;
         }
         
-        /* Class applied via JS to reveal UI */
-        #sidebar.ui-active {
-            opacity: 1; pointer-events: auto; transform: translateX(0);
-        }
+        #sidebar.ui-active { opacity: 1; pointer-events: auto; transform: translateX(0); }
 
         .nav-item {
-            font-size: 1.2rem; color: #aaaaaa; cursor: pointer;
-            margin-bottom: 25px; text-transform: uppercase; letter-spacing: 3px;
-            transition: color 0.3s ease, transform 0.3s ease;
-            position: relative; width: fit-content;
+            font-size: 1.2rem; color: #88ccff; cursor: pointer; margin-bottom: 25px;
+            text-transform: uppercase; letter-spacing: 3px;
+            transition: color 0.3s ease, transform 0.3s ease; position: relative; width: fit-content;
         }
         
         .nav-item::before {
             content: ''; position: absolute; left: -20px; top: 50%; transform: translateY(-50%);
-            width: 8px; height: 1px; background: #ffffff; opacity: 0; transition: opacity 0.3s;
+            width: 8px; height: 1px; background: #00ffff; opacity: 0; transition: opacity 0.3s;
         }
 
-        .nav-item:hover { color: #ffffff; transform: translateX(10px); }
+        .nav-item:hover { color: #ffffff; transform: translateX(10px); text-shadow: 0 0 10px #0088ff; }
         .nav-item:hover::before { opacity: 1; }
 
-        /* The Hidden Menu Tab */
-        #nav-games {
-            display: none; /* Physically hidden until 'g' is pressed */
-            color: #00e5ff; /* Special color for the secret tab */
-        }
-        #nav-games.unlocked {
-            display: block; animation: glowPulse 2s infinite;
-        }
+        /* The Hidden Games Tab */
+        #nav-games { display: none; color: #00ffff; }
+        #nav-games.unlocked { display: block; animation: glowPulse 2s infinite; }
         
         @keyframes glowPulse {
-            0% { text-shadow: 0 0 5px rgba(0, 229, 255, 0.2); }
-            50% { text-shadow: 0 0 15px rgba(0, 229, 255, 0.8); }
-            100% { text-shadow: 0 0 5px rgba(0, 229, 255, 0.2); }
+            0% { text-shadow: 0 0 5px rgba(0, 255, 255, 0.2); }
+            50% { text-shadow: 0 0 15px rgba(0, 255, 255, 0.8); }
+            100% { text-shadow: 0 0 5px rgba(0, 255, 255, 0.2); }
         }
 
-        /* ==========================================================================
-           CONTENT MODALS (The "Things" that open)
-           ========================================================================== */
+        /* --- CONTENT MODALS --- */
         .modal {
-            position: fixed; top: 0; left: 250px; /* Offset by sidebar width */
-            width: calc(100vw - 250px); height: 100vh;
-            background: rgba(10, 10, 15, 0.7); backdrop-filter: blur(15px);
+            position: fixed; top: 0; left: 250px; width: calc(100vw - 250px); height: 100vh;
+            background: rgba(0, 5, 15, 0.75); backdrop-filter: blur(15px);
             z-index: 20; padding: 60px;
-            
-            /* Hidden State */
             opacity: 0; pointer-events: none; transform: scale(0.98);
             transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
             display: flex; flex-direction: column;
         }
         
-        .modal.active {
-            opacity: 1; pointer-events: auto; transform: scale(1);
-        }
+        .modal.active { opacity: 1; pointer-events: auto; transform: scale(1); }
 
         .close-btn {
-            position: absolute; top: 40px; right: 40px;
-            font-size: 1.5rem; color: #ffffff; cursor: pointer;
-            transition: transform 0.3s;
+            position: absolute; top: 40px; right: 40px; font-size: 1.5rem; color: #00ffff;
+            cursor: pointer; transition: transform 0.3s; text-shadow: 0 0 10px #0088ff;
         }
-        .close-btn:hover { transform: rotate(90deg); }
+        .close-btn:hover { transform: rotate(90deg); color: #ffffff; }
 
         .modal-title {
             font-size: 3rem; margin-bottom: 40px; text-transform: uppercase;
-            letter-spacing: 5px; border-bottom: 2px solid #333; padding-bottom: 10px;
+            letter-spacing: 5px; border-bottom: 1px solid #0088ff; padding-bottom: 10px;
+            color: #ffffff; text-shadow: 0 0 15px rgba(0, 136, 255, 0.5);
         }
 
-        /* Layout: Horizontal Scroll for "My Work" */
+        /* Horizontal Scroll (My Work) */
         .horizontal-scroll {
             display: flex; gap: 30px; overflow-x: auto; padding-bottom: 20px;
-            /* Hide scrollbar for a cleaner look */
             -ms-overflow-style: none; scrollbar-width: none;
         }
         .horizontal-scroll::-webkit-scrollbar { display: none; }
         
         .work-card {
-            min-width: 400px; height: 500px; background: #111;
-            border: 1px solid #333; border-radius: 4px; padding: 20px;
-            display: flex; flex-direction: column;
+            min-width: 400px; height: 500px; background: rgba(0, 10, 25, 0.6);
+            border: 1px solid #0044ff; border-radius: 4px; padding: 20px;
+            display: flex; flex-direction: column; transition: transform 0.3s, box-shadow 0.3s;
         }
+        .work-card:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0, 136, 255, 0.2); }
         
         .work-img-placeholder {
-            width: 100%; height: 250px; background: #222; margin-bottom: 20px;
-            display: flex; align-items: center; justify-content: center; color: #555;
+            width: 100%; height: 250px; background: #001133; margin-bottom: 20px;
+            display: flex; align-items: center; justify-content: center; color: #0088ff;
         }
 
-        /* Layout: Grid for "Downloads" and "Games" */
+        /* Grid Layout (Downloads / Games) */
         .grid-layout {
             display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
             gap: 30px; overflow-y: auto; padding-bottom: 40px;
         }
         
         .grid-item {
-            background: #111; border: 1px solid #333; border-radius: 4px;
+            background: rgba(0, 10, 25, 0.6); border: 1px solid #0044ff; border-radius: 4px;
             padding: 20px; text-align: center; cursor: pointer; transition: all 0.2s;
         }
-        .grid-item:hover { background: #222; border-color: #555; transform: translateY(-5px); }
+        .grid-item:hover { background: rgba(0, 20, 45, 0.8); border-color: #00ffff; transform: translateY(-5px); }
         
         .btn-download {
-            margin-top: 15px; padding: 10px 20px; background: #ffffff; color: #000;
-            border: none; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-weight: bold;
+            margin-top: 15px; padding: 10px 20px; background: transparent; color: #00ffff;
+            border: 1px solid #00ffff; cursor: pointer; font-family: 'JetBrains Mono', monospace; font-weight: bold;
+            transition: all 0.3s;
         }
+        .grid-item:hover .btn-download { background: #00ffff; color: #000; }
     </style>
 </head>
 <body>
@@ -171,19 +145,19 @@
         <h2 class="modal-title">My Work</h2>
         <div class="horizontal-scroll">
             <div class="work-card">
-                <div class="work-img-placeholder">Project Image</div>
-                <h3>Project Alpha</h3>
-                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Description of the project. This area is designed for large images and explanatory text. Scroll right to see more.</p>
+                <div class="work-img-placeholder">Project Alpha</div>
+                <h3 style="color: #00ffff;">Cinematic Rendering</h3>
+                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">High-performance WebGL graphics and procedural animations designed for immersive web experiences.</p>
             </div>
             <div class="work-card">
-                <div class="work-img-placeholder">Project Image</div>
-                <h3>Project Beta</h3>
-                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Horizontal scrolling keeps the vertical height constrained while allowing for a lot of content.</p>
+                <div class="work-img-placeholder">Project Beta</div>
+                <h3 style="color: #00ffff;">Data Visualization</h3>
+                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Translating complex data sets into beautiful, readable, and interactive three-dimensional spaces.</p>
             </div>
             <div class="work-card">
-                <div class="work-img-placeholder">Project Image</div>
-                <h3>Project Gamma</h3>
-                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Placeholder for future portfolio pieces.</p>
+                <div class="work-img-placeholder">Project Gamma</div>
+                <h3 style="color: #00ffff;">UI/UX Architecture</h3>
+                <p style="margin-top: 10px; color: #aaa; line-height: 1.6;">Building seamless, heavily stylized interfaces that respond dynamically to user input.</p>
             </div>
         </div>
     </div>
@@ -192,8 +166,8 @@
         <div class="close-btn" onclick="closeAllModals()">✕</div>
         <h2 class="modal-title">What I Do</h2>
         <div style="max-width: 800px; font-size: 1.2rem; line-height: 2; color: #cccccc;">
-            <p style="margin-bottom: 20px;">I am a developer and designer specializing in immersive web experiences.</p>
-            <p>This is where you would place your biography, skills, technologies you use, and perhaps a link to your resume.</p>
+            <p style="margin-bottom: 20px; color: #ffffff;">I build universes in the browser.</p>
+            <p>I am a creative developer specializing in Three.js, shaders, and highly interactive front-end physics. I bridge the gap between hard mathematics and beautiful, cinematic user interfaces.</p>
         </div>
     </div>
 
@@ -202,36 +176,31 @@
         <h2 class="modal-title">Downloads</h2>
         <div class="grid-layout">
             <div class="grid-item">
-                <h3>Asset Pack 1</h3>
-                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Textures and UI elements.</p>
+                <h3 style="color: #ffffff;">Asset Pack 01</h3>
+                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Textures & Shaders</p>
                 <button class="btn-download">Download .zip</button>
             </div>
             <div class="grid-item">
-                <h3>Template Engine</h3>
-                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Source code repository.</p>
-                <button class="btn-download">View GitHub</button>
-            </div>
-            <div class="grid-item">
-                <h3>Resume.pdf</h3>
-                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Current CV.</p>
-                <button class="btn-download">Download</button>
+                <h3 style="color: #ffffff;">Resume.pdf</h3>
+                <p style="color: #888; font-size: 0.9rem; margin: 10px 0;">Current CV</p>
+                <button class="btn-download">Download File</button>
             </div>
         </div>
     </div>
 
     <div id="modal-games" class="modal">
         <div class="close-btn" onclick="closeAllModals()">✕</div>
-        <h2 class="modal-title" style="color: #00e5ff; border-color: rgba(0, 229, 255, 0.3);">Secret Games Hub</h2>
+        <h2 class="modal-title" style="color: #00ffff; border-color: rgba(0, 255, 255, 0.3);">Secret Games Hub</h2>
         <div class="grid-layout">
-            <div class="grid-item" style="border-color: rgba(0, 229, 255, 0.5);">
-                <h3 style="color: #00e5ff;">Game Prototype A</h3>
-                <div style="width: 100%; height: 100px; background: #222; margin: 15px 0;">Thumbnail</div>
-                <button class="btn-download" style="background: #00e5ff; color: #000;">Play Now</button>
+            <div class="grid-item">
+                <h3 style="color: #ffffff;">Prototype A</h3>
+                <div style="width: 100%; height: 100px; background: #001133; margin: 15px 0;"></div>
+                <button class="btn-download">Play Now</button>
             </div>
-            <div class="grid-item" style="border-color: rgba(0, 229, 255, 0.5);">
-                <h3 style="color: #00e5ff;">Game Prototype B</h3>
-                <div style="width: 100%; height: 100px; background: #222; margin: 15px 0;">Thumbnail</div>
-                <button class="btn-download" style="background: #00e5ff; color: #000;">Play Now</button>
+            <div class="grid-item">
+                <h3 style="color: #ffffff;">Prototype B</h3>
+                <div style="width: 100%; height: 100px; background: #001133; margin: 15px 0;"></div>
+                <button class="btn-download">Play Now</button>
             </div>
         </div>
     </div>
@@ -240,21 +209,17 @@
         // ==========================================
         // UI INTERACTION LOGIC
         // ==========================================
-        
-        // Secret Key Press Event ('g' for Games)
         document.addEventListener('keydown', function(event) {
             if (event.key.toLowerCase() === 'g') {
                 const gamesTab = document.getElementById('nav-games');
                 if (!gamesTab.classList.contains('unlocked')) {
                     gamesTab.classList.add('unlocked');
-                    console.log("Secret Unlocked: Games Tab Revealed");
                 }
             }
         });
 
-        // Modal Management
         function openModal(modalId) {
-            closeAllModals(); // Close others first
+            closeAllModals();
             document.getElementById(modalId).classList.add('active');
         }
 
@@ -263,152 +228,236 @@
             modals.forEach(m => m.classList.remove('active'));
         }
 
-        // Trigger the intro sequence on load
+        // ==========================================
+        // THREE.JS CINEMATIC ENGINE
+        // ==========================================
         window.onload = function() {
-            // 1. Fade out the initial black screen
-            setTimeout(() => {
-                document.getElementById('intro-overlay').style.opacity = '0';
-            }, 500);
-
-            // 2. Trigger the UI reveal after the black hole finishes expanding
-            setTimeout(() => {
-                document.getElementById('sidebar').classList.add('ui-active');
-                // Push the canvas behind the UI
-                document.getElementById('webgl-background').style.zIndex = '-1';
-            }, 3500);
-
+            // Fade out the initial black screen instantly so the WebGL rendering handles the dark
+            setTimeout(() => { document.getElementById('intro-overlay').style.opacity = '0'; }, 100);
+            
             initBackgroundEngine();
         };
 
-        // ==========================================
-        // BLACK HOLE / VOID BACKGROUND ENGINE
-        // ==========================================
         function initBackgroundEngine() {
             const scene = new THREE.Scene();
-            const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 10000);
-            
-            // Start camera far away, it will push in rapidly
-            camera.position.z = 2000;
+            scene.fog = new THREE.FogExp2(0x000000, 0.015);
 
-            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
+            const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
             renderer.setSize(window.innerWidth, window.innerHeight);
-            renderer.setPixelRatio(window.devicePixelRatio);
             document.getElementById('webgl-background').appendChild(renderer.domElement);
 
-            // --- The Stars ---
+            // Hardcoded physics multipliers based on your original settings
+            const camSpeedMod = 0.5;
+            const ringSpeedMod = 1.2;
+
+            // --- A. Background Starfield ---
             const starGeo = new THREE.BufferGeometry();
-            const starCount = 5000;
+            const starCount = 8000;
             const starPos = new Float32Array(starCount * 3);
-            for(let i=0; i<starCount; i++) {
-                starPos[i*3] = (Math.random() - 0.5) * 4000;
-                starPos[i*3+1] = (Math.random() - 0.5) * 4000;
-                starPos[i*3+2] = (Math.random() - 0.5) * 4000;
+            for(let i=0; i < starCount * 3; i++) {
+                starPos[i] = (Math.random() - 0.5) * 300; 
             }
             starGeo.setAttribute('position', new THREE.BufferAttribute(starPos, 3));
-            // Stars start invisible
-            const starMat = new THREE.PointsMaterial({ color: 0xffffff, size: 2, transparent: true, opacity: 0 });
+            const starMat = new THREE.PointsMaterial({ color: 0x88ccff, size: 0.15, transparent: true, opacity: 0 });
             const stars = new THREE.Points(starGeo, starMat);
             scene.add(stars);
 
-            // --- The Black Hole (Accretion Disk) ---
+            // --- B. The Expanding Star (Supernova Trigger) ---
+            const starMeshGeo = new THREE.SphereGeometry(1, 32, 32);
+            const starMeshMat = new THREE.MeshBasicMaterial({ color: 0xffffff });
+            const expandingStar = new THREE.Mesh(starMeshGeo, starMeshMat);
+            expandingStar.scale.set(0, 0, 0); // Hidden initially
+            scene.add(expandingStar);
+
+            // --- C. The Black Hole Elements (Grouped for easy scaling) ---
             const bhGroup = new THREE.Group();
             scene.add(bhGroup);
 
-            // The Event Horizon (Pure Black Sphere)
-            const ehGeo = new THREE.SphereGeometry(30, 32, 32);
-            const ehMat = new THREE.MeshBasicMaterial({ color: 0x000000 });
-            const eventHorizon = new THREE.Mesh(ehGeo, ehMat);
-            bhGroup.add(eventHorizon);
+            const eventHorizonRadius = 3.5;
+            const coreGeo = new THREE.SphereGeometry(eventHorizonRadius, 64, 64);
+            const coreMat = new THREE.MeshBasicMaterial({ color: 0x000000 }); 
+            const core = new THREE.Mesh(coreGeo, coreMat);
+            bhGroup.add(core);
 
-            // The Accretion Disk (Thousands of fast-moving particles)
+            const auraGeo = new THREE.SphereGeometry(3.8, 64, 64);
+            const auraMat = new THREE.MeshBasicMaterial({ 
+                color: 0x0044ff, transparent: true, opacity: 0.2,
+                blending: THREE.AdditiveBlending, side: THREE.BackSide
+            });
+            const aura = new THREE.Mesh(auraGeo, auraMat);
+            bhGroup.add(aura);
+
+            // Disk Math setup exactly as provided
             const diskGeo = new THREE.BufferGeometry();
-            const diskCount = 15000;
+            const diskCount = 60000; 
             const diskPos = new Float32Array(diskCount * 3);
-            const diskAngles = new Float32Array(diskCount); // Store angles for physics
+            const diskColors = new Float32Array(diskCount * 3);
+            const diskAngles = new Float32Array(diskCount);
+            const diskRadii = new Float32Array(diskCount);
             const diskSpeeds = new Float32Array(diskCount);
-            
-            for(let i=0; i<diskCount; i++) {
-                const radius = 40 + Math.random() * 150;
+
+            const color1 = new THREE.Color(0x00ffff); 
+            const color2 = new THREE.Color(0x0022ff); 
+
+            for(let i=0; i < diskCount; i++) {
+                const radius = 4.5 + Math.random() * 15;
                 const angle = Math.random() * Math.PI * 2;
+                
+                diskRadii[i] = radius;
                 diskAngles[i] = angle;
-                // Inner particles move faster
-                diskSpeeds[i] = 0.05 + (1 / radius) * 5; 
-                
-                // Add vertical variation (thicker in middle, thinner at edges)
-                const y = (Math.random() - 0.5) * (150 / radius) * 5;
-                
+                diskSpeeds[i] = (1 / (radius * 0.8)) * 0.05;
+
                 diskPos[i*3] = Math.cos(angle) * radius;
-                diskPos[i*3+1] = y;
+                diskPos[i*3+1] = (Math.random() - 0.5) * 0.3; 
                 diskPos[i*3+2] = Math.sin(angle) * radius;
+
+                const mixedColor = color1.clone().lerp(color2, Math.random());
+                diskColors[i*3] = mixedColor.r; diskColors[i*3+1] = mixedColor.g; diskColors[i*3+2] = mixedColor.b;
             }
+
             diskGeo.setAttribute('position', new THREE.BufferAttribute(diskPos, 3));
+            diskGeo.setAttribute('color', new THREE.BufferAttribute(diskColors, 3));
             
-            // Start disk invisible
-            const diskMat = new THREE.PointsMaterial({ color: 0xaaaaaa, size: 1.2, transparent: true, opacity: 0 });
-            const accretionDisk = new THREE.Points(diskGeo, diskMat);
-            // Tilt the disk for a cinematic angle
-            accretionDisk.rotation.x = Math.PI / 2.2;
-            bhGroup.add(accretionDisk);
+            const diskMat = new THREE.PointsMaterial({ 
+                size: 0.03, vertexColors: true, transparent: true, opacity: 0.6, blending: THREE.AdditiveBlending 
+            });
+            const disk = new THREE.Points(diskGeo, diskMat);
+            disk.rotation.x = Math.PI / 6; 
+            bhGroup.add(disk);
 
-            // Start Black Hole extremely small
-            bhGroup.scale.set(0.001, 0.001, 0.001);
+            // Spaghettification setup exactly as provided
+            const spagGeo = new THREE.BufferGeometry();
+            const spagCount = 3000;
+            const spagPos = new Float32Array(spagCount * 6);
+            const spagAngles = new Float32Array(spagCount);
+            const spagRadii = new Float32Array(spagCount);
+            const spagColors = new Float32Array(spagCount * 6);
 
-            // --- Render Loop & Animation Timeline ---
-            const clock = new THREE.Clock();
-            let time = 0;
+            for(let i=0; i < spagCount; i++) {
+                spagRadii[i] = 4 + Math.random() * 8;
+                spagAngles[i] = Math.random() * Math.PI * 2;
+                const streamColor = new THREE.Color(Math.random() > 0.5 ? 0x00ffff : 0xffffff);
+                spagColors[i*6] = streamColor.r; spagColors[i*6+1] = streamColor.g; spagColors[i*6+2] = streamColor.b;
+                spagColors[i*6+3] = streamColor.r; spagColors[i*6+4] = streamColor.g; spagColors[i*6+5] = streamColor.b;
+            }
+
+            spagGeo.setAttribute('position', new THREE.BufferAttribute(spagPos, 3));
+            spagGeo.setAttribute('color', new THREE.BufferAttribute(spagColors, 3));
+
+            const spagMat = new THREE.LineBasicMaterial({
+                vertexColors: true, transparent: true, opacity: 0.8, blending: THREE.AdditiveBlending
+            });
+            const spagLines = new THREE.LineSegments(spagGeo, spagMat);
+            spagLines.rotation.x = Math.PI / 6;
+            bhGroup.add(spagLines);
+
+            // Hide the black hole until it spawns
+            bhGroup.scale.set(0, 0, 0);
+
+            // ==========================================
+            // 5. TIMELINE & MASTER RENDER LOOP
+            // ==========================================
+            let clock = new THREE.Clock();
+            let uiRevealed = false;
 
             function animate() {
                 requestAnimationFrame(animate);
                 
                 const delta = Math.min(clock.getDelta(), 0.1); // Safe capping
-                time += delta;
+                const time = clock.getElapsedTime();
 
-                // 1. The Expansion Sequence (T+0s to T+3s)
-                if (time < 3) {
-                    // Fast exponential ease out
-                    const t = time / 3;
-                    const expansion = 1 - Math.pow(1 - t, 4);
-                    
-                    bhGroup.scale.set(expansion, expansion, expansion);
-                    diskMat.opacity = expansion * 0.8;
-                    starMat.opacity = expansion * 0.5;
-                    
-                    // Camera pushes in dramatically during expansion
-                    camera.position.z = 2000 - (expansion * 1700);
+                // --- CHOREOGRAPHY TIMELINE ---
+                
+                // 1. Stars fade in (0s to 1.5s)
+                if (time < 1.5) {
+                    starMat.opacity = Math.min(0.4, time / 1.5 * 0.4);
+                } else {
+                    starMat.opacity = 0.4;
                 }
 
-                // 2. Continuous Physics
-                stars.rotation.y += delta * 0.01;
-                
-                // Spin the accretion disk manually to control speeds based on radius
-                const positions = accretionDisk.geometry.attributes.position.array;
-                for (let i = 0; i < diskCount; i++) {
-                    diskAngles[i] -= diskSpeeds[i] * delta;
-                    
-                    // Re-calculate X and Z based on new angle, keeping original radius and Y
-                    const vx = positions[i*3];
-                    const vz = positions[i*3+2];
-                    const radius = Math.sqrt(vx*vx + vz*vz);
-                    
-                    positions[i*3] = Math.cos(diskAngles[i]) * radius;
-                    positions[i*3+2] = Math.sin(diskAngles[i]) * radius;
+                // 2. White Star Appears & Expands (1.5s to 3s)
+                if (time >= 1.5 && time < 3.0) {
+                    let t = (time - 1.5) / 1.5; 
+                    let s = t * t * 25; // Exponential growth
+                    expandingStar.scale.set(s, s, s);
                 }
-                accretionDisk.geometry.attributes.position.needsUpdate = true;
 
-                // Slowly drift the entire Black Hole group for a floating effect
-                bhGroup.position.y = Math.sin(time * 0.5) * 5;
-                bhGroup.rotation.y = Math.sin(time * 0.2) * 0.1;
+                // 3. Star Collapses & Black Hole Births (3.0s to 3.5s)
+                if (time >= 3.0 && time < 3.5) {
+                    let t = (time - 3.0) / 0.5;
+                    let shrink = 25 * (1 - t);
+                    expandingStar.scale.set(shrink, shrink, shrink);
+                    bhGroup.scale.set(t, t, t);
+                }
 
-                // Move camera slightly based on mouse position to create parallax
-                // (Disabled initially during the heavy intro animation to save frames)
-                
+                // 4. Stabilize Black hole & Reveal UI (3.5s+)
+                if (time >= 3.5) {
+                    expandingStar.visible = false;
+                    bhGroup.scale.set(1, 1, 1);
+                    
+                    if (!uiRevealed) {
+                        uiRevealed = true;
+                        setTimeout(() => {
+                            document.getElementById('sidebar').classList.add('ui-active');
+                        }, 500); // UI fades in right after stabilization
+                    }
+                }
+
+                // --- PHYSICS UPDATES ---
+                if (time >= 3.0) {
+                    aura.rotation.y -= 0.005 * ringSpeedMod;
+                    aura.rotation.z += 0.002 * ringSpeedMod;
+
+                    const positions = diskGeo.attributes.position.array;
+                    for(let i=0; i < diskCount; i++) {
+                        diskAngles[i] += diskSpeeds[i] * ringSpeedMod;
+                        diskRadii[i] -= 0.003 * ringSpeedMod; 
+
+                        if (diskRadii[i] < eventHorizonRadius + 0.1) diskRadii[i] = 18; 
+
+                        positions[i*3] = Math.cos(diskAngles[i]) * diskRadii[i];
+                        positions[i*3+2] = Math.sin(diskAngles[i]) * diskRadii[i];
+                        positions[i*3+1] = Math.sin(time + diskAngles[i] * 5) * 0.1 * (diskRadii[i] / 5);
+                    }
+                    diskGeo.attributes.position.needsUpdate = true;
+
+                    const sPositions = spagGeo.attributes.position.array;
+                    for(let i=0; i < spagCount; i++) {
+                        spagAngles[i] += (1 / spagRadii[i]) * 0.08 * ringSpeedMod;
+                        spagRadii[i] -= 0.02 * ringSpeedMod; 
+
+                        if (spagRadii[i] < eventHorizonRadius) spagRadii[i] = 6 + Math.random() * 6;
+
+                        const stretchFactor = Math.max(0, (6 - spagRadii[i]) * 0.8); 
+                        
+                        sPositions[i*6] = Math.cos(spagAngles[i]) * spagRadii[i];
+                        sPositions[i*6+1] = (Math.random() - 0.5) * 0.1;
+                        sPositions[i*6+2] = Math.sin(spagAngles[i]) * spagRadii[i];
+
+                        sPositions[i*6+3] = Math.cos(spagAngles[i] - 0.05) * (spagRadii[i] + stretchFactor);
+                        sPositions[i*6+4] = sPositions[i*6+1]; 
+                        sPositions[i*6+5] = Math.sin(spagAngles[i] - 0.05) * (spagRadii[i] + stretchFactor);
+                    }
+                    spagGeo.attributes.position.needsUpdate = true;
+                }
+
+                // Starfield rotation
+                stars.rotation.y = time * 0.005 * camSpeedMod;
+
+                // Cinematic Camera Float
+                camera.position.x = Math.sin(time * 0.15 * camSpeedMod) * 14;
+                camera.position.z = Math.cos(time * 0.15 * camSpeedMod) * 14;
+                camera.position.y = Math.sin(time * 0.08 * camSpeedMod) * 5 + 2;
+                camera.lookAt(0, 0, 0);
+
                 renderer.render(scene, camera);
             }
 
             window.addEventListener('resize', () => {
+                renderer.setSize(window.innerWidth, window.innerHeight);
                 camera.aspect = window.innerWidth / window.innerHeight;
                 camera.updateProjectionMatrix();
-                renderer.setSize(window.innerWidth, window.innerHeight);
             });
 
             animate();
